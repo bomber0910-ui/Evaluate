@@ -6,13 +6,8 @@
     <title>花蓮縣信義國小試卷與學生答題診斷系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 引入檔案解析所需套件 -->
+    <!-- 引入檔案解析所需套件 (僅保留處理 Word 檔的 mammoth) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        // 設定 PDF.js worker
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
 
     <style>
         .loader {
@@ -39,7 +34,7 @@
     <div class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
         <header class="mb-6">
             <h1 class="text-3xl font-bold text-gray-900">花蓮縣信義國小 評量分析與學生診斷系統</h1>
-            <p class="text-sm text-gray-600 mt-2">支援上傳 PDF、Word、TXT 或是圖檔。提供「試卷命題分析」與「個別學生答題診斷」雙模式。</p>
+            <p class="text-sm text-gray-600 mt-2">支援上傳 PDF、Word、TXT 或是圖檔。提供「試卷命題分析」與「批次學生答題診斷」雙模式。</p>
         </header>
 
         <!-- 分頁導覽列 -->
@@ -49,7 +44,7 @@
                     📝 試卷命題總體分析
                 </button>
                 <button id="tab-student" onclick="switchTab('student')" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base transition-colors">
-                    🧑‍🎓 學生個別答題診斷
+                    🧑‍🎓 班級學生個別答題診斷
                 </button>
             </nav>
         </div>
@@ -114,7 +109,7 @@
             </div>
         </main>
 
-        <!-- ==================== 模式二：學生個別答題診斷 ==================== -->
+        <!-- ==================== 模式二：班級學生個別答題診斷 ==================== -->
         <main id="section-student" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- 左側輸入區 -->
             <div class="lg:col-span-1 space-y-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -129,7 +124,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">上傳【學生作答後】試卷圖檔/PDF</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">上傳【全班學生作答後】試卷圖檔/PDF</label>
                     <div id="studentDropZone" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md transition-colors cursor-pointer hover:bg-gray-50">
                         <div class="space-y-1 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
@@ -149,7 +144,7 @@
                 </div>
 
                 <button id="analyzeStudentBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-150 flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    <span>開始學生弱點診斷</span>
+                    <span>開始批次學生弱點診斷</span>
                 </button>
 
                 <div id="studentLoadingState" class="hidden flex-col items-center justify-center space-y-3 mt-4">
@@ -163,13 +158,13 @@
             <!-- 右側結果區 -->
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full">
                 <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <h2 class="text-xl font-semibold text-gray-800">學生診斷結果與補救建議</h2>
+                    <h2 class="text-xl font-semibold text-gray-800">全班與個別學生診斷結果</h2>
                     <button id="studentExportBtn" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-4 rounded transition duration-150 text-sm flex items-center">
                         匯出為 Word (.doc)
                     </button>
                 </div>
                 <div id="studentResultsContainer" class="flex-grow overflow-auto bg-gray-50 rounded border border-gray-100 p-4">
-                    <div class="text-center text-gray-500 mt-10">請上傳學生作答後的試卷檔案，並點擊診斷。</div>
+                    <div class="text-center text-gray-500 mt-10">請上傳包含學生作答的試卷檔案，並點擊診斷。</div>
                 </div>
             </div>
         </main>
@@ -197,27 +192,19 @@
         async function extractContentFromFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                const fileType = file.type || file.name.split('.').pop().toLowerCase();
+                const fileType = file.type || '';
+                const fileExt = file.name.split('.').pop().toLowerCase();
 
-                if (fileType.includes('image') || ['jpg','jpeg','png'].includes(fileType)) {
-                    reader.onload = (e) => resolve({ type: 'image', mimeType: file.type || 'image/jpeg', data: e.target.result.split(',')[1] });
+                if (fileType.includes('image') || ['jpg','jpeg','png'].includes(fileExt)) {
+                    reader.onload = (e) => resolve({ type: 'image', mimeType: file.type || `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`, data: e.target.result.split(',')[1] });
                     reader.onerror = reject;
                     reader.readAsDataURL(file);
-                } else if (fileType.includes('pdf') || fileType === 'pdf') {
-                    reader.onload = async function() {
-                        try {
-                            const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(this.result) }).promise;
-                            let fullText = "";
-                            for (let i = 1; i <= pdf.numPages; i++) {
-                                const page = await pdf.getPage(i);
-                                fullText += (await page.getTextContent()).items.map(item => item.str).join(" ") + "\n";
-                            }
-                            if (fullText.trim().length < 20) reject(new Error("PDF 文字過少。若是掃描檔，請直接上傳圖片。"));
-                            else resolve({ type: 'text', data: fullText });
-                        } catch (err) { reject(err); }
-                    };
-                    reader.readAsArrayBuffer(file);
-                } else if (fileType.includes('wordprocessingml') || fileType === 'docx') {
+                } else if (fileType.includes('pdf') || fileExt === 'pdf') {
+                    // 直接將 PDF 轉為 base64 交給 Vision API 處理，保留手寫筆跡與圖形
+                    reader.onload = (e) => resolve({ type: 'image', mimeType: 'application/pdf', data: e.target.result.split(',')[1] });
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                } else if (fileType.includes('wordprocessingml') || fileExt === 'docx') {
                     reader.onload = async function(e) {
                         try { resolve({ type: 'text', data: (await mammoth.extractRawText({ arrayBuffer: e.target.result })).value }); } 
                         catch (err) { reject(err); }
@@ -277,7 +264,7 @@
         analyzeBtn.addEventListener('click', handleAnalyze);
         exportBtn.addEventListener('click', exportToWord);
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
         dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0]); });
         fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFileSelect(e.target.files[0]); });
         dropZone.addEventListener('click', (e) => { if (e.target !== fileInput) fileInput.click(); });
@@ -307,7 +294,7 @@
                 const systemPrompt = `你是一位專業的教育評量專家。針對「${subject}」試卷：
                     1. 產出「試卷總體綜合評論」，包含難易度評估、素養導向分析、出題優點、待改進之處，請深入詳盡。
                     2. 找出並分析「每一道題目」，包含原題內容、核心能力、迷思概念、教學策略。
-                    【重要】禁止使用實體換行，需換行/分段請一律使用 [BR] 或 [BR][BR] 標記。精簡逐題文字防截斷。`;
+                    【極度重要規範】：絕對禁止使用實體換行，需換行/分段請一律使用 [BR] 或 [BR][BR] 標記。精簡逐題文字防截斷。`;
 
                 const schema = {
                     type: "OBJECT", properties: {
@@ -317,16 +304,24 @@
                 };
 
                 let apiParts = [];
-                if (content.type === 'text') apiParts.push({ text: systemPrompt + "\n\n試卷內容：\n" + content.data });
-                else apiParts.push({ text: systemPrompt + "\n\n請分析附圖中的試卷內容。" }, { inlineData: { mimeType: content.mimeType, data: content.data } });
+                if (content.type === 'text') {
+                    apiParts.push({ text: "試卷內容：\n" + content.data });
+                } else {
+                    apiParts.push({ text: "請分析附圖或 PDF 檔案中的試卷內容。" }, { inlineData: { mimeType: content.mimeType, data: content.data } });
+                }
 
-                const payload = { contents: [{ role: "user", parts: apiParts }], generationConfig: { responseMimeType: "application/json", responseSchema: schema, maxOutputTokens: 8192 } };
+                const payload = { 
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    contents: [{ role: "user", parts: apiParts }], 
+                    generationConfig: { responseMimeType: "application/json", responseSchema: schema, maxOutputTokens: 8192 } 
+                };
+                
                 const result = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
                 const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (!jsonText) throw new Error("API 未回傳有效資料");
 
-                currentAnalysisData = parseAndRepairJSON(jsonText, '"items":[');
+                currentAnalysisData = parseAndRepairJSON(jsonText);
                 renderResults(currentAnalysisData);
             } catch (error) {
                 console.error(error);
@@ -391,7 +386,7 @@
             downloadBlob(wordHtml, '花蓮縣信義國小_試卷命題分析報告.doc');
         }
 
-        // ================= 模式二：學生個別答題診斷邏輯 =================
+        // ================= 模式二：班級學生個別答題診斷邏輯 =================
         const analyzeStudentBtn = document.getElementById('analyzeStudentBtn');
         const studentExportBtn = document.getElementById('studentExportBtn');
         const studentFileInput = document.getElementById('studentFileInput');
@@ -404,7 +399,7 @@
         analyzeStudentBtn.addEventListener('click', handleStudentAnalyze);
         studentExportBtn.addEventListener('click', exportStudentToWord);
         studentDropZone.addEventListener('dragover', (e) => { e.preventDefault(); studentDropZone.classList.add('drag-over'); });
-        studentDropZone.addEventListener('dragleave', () => studentDropZone.classList.remove('drag-over'));
+        studentDropZone.addEventListener('dragleave', () => { studentDropZone.classList.remove('drag-over'); });
         studentDropZone.addEventListener('drop', (e) => { e.preventDefault(); studentDropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleStudentFileSelect(e.dataTransfer.files[0]); });
         studentFileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleStudentFileSelect(e.target.files[0]); });
         studentDropZone.addEventListener('click', (e) => { if (e.target !== studentFileInput) studentFileInput.click(); });
@@ -429,31 +424,56 @@
 
             try {
                 const content = await extractContentFromFile(selectedStudentFile);
-                setLoading('analyzeStudentBtn', 'studentLoadingState', 'studentLoadingText', true, "進行學生弱點診斷中(約需15-30秒)...");
+                setLoading('analyzeStudentBtn', 'studentLoadingState', 'studentLoadingText', true, "進行批次學生弱點診斷中(約需15-40秒)...");
                 
-                const systemPrompt = `你是一位專業的教育評量專家。針對「${subject}」的學生作答卷：
-                    1. 評估「學生整體表現」：包含強項、弱項與整體輔導建議，需具體詳盡。
-                    2. 找出該名學生「答錯的題目」，逐題分析其具體的作答狀況、推論其個別的迷思概念，並給予針對該學生的補救教學策略。若未答錯則無須列出。
-                    【重要】禁止使用實體換行，需換行/分段請一律使用 [BR] 或 [BR][BR] 標記。`;
+                // 【核心優化】：要求模型識別「全班整體」以及「逐一識別每位學生」
+                const systemPrompt = `你是一位專業的教育評量與輔導專家。針對「${subject}」的班級學生作答卷（檔案內可能包含多位學生的作答）：
+                    1. 首先評估「全班整體表現」：包含全班共同學習強項、主要弱項與整體教學建議。
+                    2. 辨識檔案中出現的「所有學生」，並為【每一位學生】獨立產出一筆資料放入 students 陣列。絕對不可只做總結，必須逐一分析。
+                    3. 針對每位學生，產出「個別學生分析診斷」：深入剖析該生的認知迷思樣態、學習狀態特徵，並給予專屬行動方案。
+                    4. 針對每位學生，找出該生「答錯的題目」，逐題分析作答狀況、迷思概念及補救策略。若該生全對則錯題陣列可留空。
+                    【極度重要規範】：絕對禁止使用實體換行，需換行/分段請一律使用 [BR] 或 [BR][BR] 標記。`;
 
                 const schema = {
                     type: "OBJECT", properties: {
-                        overallPerformance: { type: "OBJECT", properties: { strengths: { type: "STRING" }, weaknesses: { type: "STRING" }, generalAdvice: { type: "STRING" } }, required: ["strengths", "weaknesses", "generalAdvice"] },
-                        errorItems: { type: "ARRAY", items: { type: "OBJECT", properties: { questionNumber: { type: "STRING" }, studentAnswerStatus: { type: "STRING", description: "學生實際寫了什麼/錯誤樣態" }, misconception: { type: "STRING" }, remedialStrategy: { type: "STRING" } }, required: ["questionNumber", "studentAnswerStatus", "misconception", "remedialStrategy"] } }
-                    }, required: ["overallPerformance", "errorItems"]
+                        classOverallPerformance: { 
+                            type: "OBJECT", properties: { 
+                                strengths: { type: "STRING", description: "全班共同學習強項" }, 
+                                weaknesses: { type: "STRING", description: "全班共同主要弱項" }, 
+                                generalAdvice: { type: "STRING", description: "全班整體教學與補救建議" } 
+                            }, required: ["strengths", "weaknesses", "generalAdvice"] 
+                        },
+                        students: { 
+                            type: "ARRAY", items: { 
+                                type: "OBJECT", properties: { 
+                                    studentIdentifier: { type: "STRING", description: "學生代號或姓名 (如: 學生A, 座號1)" },
+                                    individualDiagnosis: { type: "OBJECT", properties: { cognitivePattern: { type: "STRING", description: "個別認知迷思樣態" }, learningStatus: { type: "STRING", description: "個別學習狀態與作答特徵" }, customizedActionPlan: { type: "STRING", description: "個人化專屬行動方案" } }, required: ["cognitivePattern", "learningStatus", "customizedActionPlan"] },
+                                    errorItems: { type: "ARRAY", items: { type: "OBJECT", properties: { questionNumber: { type: "STRING" }, studentAnswerStatus: { type: "STRING", description: "學生實際寫了什麼/錯誤樣態" }, misconception: { type: "STRING" }, remedialStrategy: { type: "STRING" } }, required: ["questionNumber", "studentAnswerStatus", "misconception", "remedialStrategy"] } }
+                                }, required: ["studentIdentifier", "individualDiagnosis", "errorItems"] 
+                            } 
+                        }
+                    }, required: ["classOverallPerformance", "students"]
                 };
 
                 let apiParts = [];
-                if (content.type === 'text') apiParts.push({ text: systemPrompt + "\n\n作答內容：\n" + content.data });
-                else apiParts.push({ text: systemPrompt + "\n\n請診斷附圖中學生的作答狀況。" }, { inlineData: { mimeType: content.mimeType, data: content.data } });
+                if (content.type === 'text') {
+                    apiParts.push({ text: "作答內容：\n" + content.data });
+                } else {
+                    apiParts.push({ text: "請診斷附圖或 PDF 檔案中全班學生的作答狀況，並逐一列出每一位學生的分析。" }, { inlineData: { mimeType: content.mimeType, data: content.data } });
+                }
 
-                const payload = { contents: [{ role: "user", parts: apiParts }], generationConfig: { responseMimeType: "application/json", responseSchema: schema, maxOutputTokens: 8192 } };
+                const payload = { 
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    contents: [{ role: "user", parts: apiParts }], 
+                    generationConfig: { responseMimeType: "application/json", responseSchema: schema, maxOutputTokens: 8192 } 
+                };
+                
                 const result = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
                 const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (!jsonText) throw new Error("API 未回傳有效資料");
 
-                currentStudentData = parseAndRepairJSON(jsonText, '"errorItems":[');
+                currentStudentData = parseAndRepairJSON(jsonText);
                 renderStudentResults(currentStudentData);
             } catch (error) {
                 console.error(error);
@@ -465,69 +485,130 @@
         function renderStudentResults(data) {
             const container = document.getElementById('studentResultsContainer');
             if (!data) { container.innerHTML = `<div class="text-center text-gray-500 mt-10">無法解析診斷資料。</div>`; return; }
-            let html = '<div class="space-y-4">';
-            if (data._isTruncated) html += `<div class="bg-yellow-50 text-yellow-800 p-4 rounded-lg shadow-sm text-sm"><strong>⚠️ 部分結果已截斷</strong> 建議拆分上傳。</div>`;
+            let html = '<div class="space-y-6">';
+            if (data._isTruncated) html += `<div class="bg-yellow-50 text-yellow-800 p-4 rounded-lg shadow-sm text-sm"><strong>⚠️ 部分結果已截斷</strong> 建議減少單次上傳的學生考卷數量。</div>`;
             
-            if (data.overallPerformance) {
+            // 渲染：全班整體表現
+            if (data.classOverallPerformance) {
                 html += `
                 <div class="bg-teal-50 p-5 rounded-lg border border-teal-200 shadow-sm">
-                    <h2 class="font-bold text-xl text-teal-900 mb-4 border-b border-teal-200 pb-2">學生整體表現評估</h2>
+                    <h2 class="font-bold text-xl text-teal-900 mb-4 border-b border-teal-200 pb-2">全班整體表現評估</h2>
                     <div class="space-y-3">
-                        <div><span class="font-bold text-teal-800">學習強項</span><p class="text-sm mt-1 text-gray-800 leading-relaxed">${formatContent(data.overallPerformance.strengths)}</p></div>
-                        <div><span class="font-bold text-red-800">主要弱項</span><p class="text-sm mt-1 text-gray-800 leading-relaxed">${formatContent(data.overallPerformance.weaknesses)}</p></div>
-                        <div class="bg-teal-100 p-3 rounded"><span class="font-bold text-teal-900">整體輔導與補救建議</span><p class="text-sm mt-1 text-gray-900 leading-relaxed">${formatContent(data.overallPerformance.generalAdvice)}</p></div>
+                        <div><span class="font-bold text-teal-800">全班共同強項</span><p class="text-sm mt-1 text-gray-800 leading-relaxed">${formatContent(data.classOverallPerformance.strengths)}</p></div>
+                        <div><span class="font-bold text-red-800">全班主要弱項</span><p class="text-sm mt-1 text-gray-800 leading-relaxed">${formatContent(data.classOverallPerformance.weaknesses)}</p></div>
+                        <div class="bg-teal-100 p-3 rounded"><span class="font-bold text-teal-900">整體輔導與教學建議</span><p class="text-sm mt-1 text-gray-900 leading-relaxed">${formatContent(data.classOverallPerformance.generalAdvice)}</p></div>
                     </div>
                 </div>`;
             }
-            if (data.errorItems && data.errorItems.length > 0) {
-                html += `<h2 class="font-bold text-lg text-gray-800 mt-6 mb-2">答錯題目分析</h2>`;
-                data.errorItems.forEach(item => {
+
+            // 渲染：逐一學生獨立診斷
+            if (data.students && data.students.length > 0) {
+                data.students.forEach(student => {
                     html += `
-                    <div class="bg-white p-4 rounded border border-gray-200 shadow-sm">
-                        <h3 class="font-bold text-lg text-red-700 mb-2 border-b pb-1">錯誤題號：${escapeHtml(item.questionNumber)}</h3>
-                        <div class="mb-3"><span class="text-xs font-semibold text-gray-500 uppercase">學生作答狀況</span><p class="text-sm mt-1 text-gray-800 bg-gray-50 p-2 rounded">${formatContent(item.studentAnswerStatus)}</p></div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                            <div><span class="text-xs font-semibold text-gray-500">個別迷思概念推論</span><p class="text-sm mt-1 text-red-700">${formatContent(item.misconception)}</p></div>
-                            <div><span class="text-xs font-semibold text-gray-500">專屬補救教學策略</span><p class="text-sm mt-1 text-teal-700">${formatContent(item.remedialStrategy)}</p></div>
+                    <div class="bg-white rounded-lg border border-gray-300 shadow-md overflow-hidden">
+                        <div class="bg-indigo-600 px-4 py-3 border-b border-indigo-700">
+                            <h2 class="text-lg font-bold text-white flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                學生：${escapeHtml(student.studentIdentifier)}
+                            </h2>
+                        </div>
+                        <div class="p-5 space-y-5">
+                            <!-- 個別學生分析診斷 -->
+                            <div class="bg-indigo-50 p-4 rounded-md border border-indigo-100">
+                                <h3 class="font-bold text-indigo-900 mb-2 border-b border-indigo-200 pb-1">個別學生深度診斷</h3>
+                                <div class="space-y-3">
+                                    <div><span class="font-bold text-indigo-800 text-sm">認知迷思樣態</span><p class="text-sm mt-1 text-gray-800 leading-relaxed">${formatContent(student.individualDiagnosis?.cognitivePattern)}</p></div>
+                                    <div><span class="font-bold text-indigo-800 text-sm">學習狀態與作答特徵</span><p class="text-sm mt-1 text-gray-800 leading-relaxed">${formatContent(student.individualDiagnosis?.learningStatus)}</p></div>
+                                    <div class="bg-white p-3 rounded border border-indigo-100"><span class="font-bold text-indigo-900 text-sm">個人化專屬行動方案</span><p class="text-sm mt-1 text-gray-900 leading-relaxed">${formatContent(student.individualDiagnosis?.customizedActionPlan)}</p></div>
+                                </div>
+                            </div>
+
+                            <!-- 錯題清單 -->
+                            <div>
+                                <h3 class="font-bold text-gray-800 mb-3">答錯題目分析</h3>`;
+                                
+                    if (student.errorItems && student.errorItems.length > 0) {
+                        student.errorItems.forEach(item => {
+                            html += `
+                            <div class="bg-gray-50 p-4 rounded border border-gray-200 shadow-sm mb-3">
+                                <h4 class="font-bold text-md text-red-700 mb-2 border-b border-red-100 pb-1">錯誤題號：${escapeHtml(item.questionNumber)}</h4>
+                                <div class="mb-3"><span class="text-xs font-semibold text-gray-500 uppercase">學生作答狀況</span><p class="text-sm mt-1 text-gray-800 bg-white p-2 rounded border border-gray-200">${formatContent(item.studentAnswerStatus)}</p></div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                                    <div><span class="text-xs font-semibold text-gray-500">個別迷思概念推論</span><p class="text-sm mt-1 text-red-700">${formatContent(item.misconception)}</p></div>
+                                    <div><span class="text-xs font-semibold text-gray-500">專屬補救教學策略</span><p class="text-sm mt-1 text-teal-700">${formatContent(item.remedialStrategy)}</p></div>
+                                </div>
+                            </div>`;
+                        });
+                    } else {
+                        html += `<div class="bg-green-50 text-green-800 p-3 rounded text-sm border border-green-200">🎉 未發現明顯答錯題目或無錯誤資料。</div>`;
+                    }
+                    html += `
+                            </div>
                         </div>
                     </div>`;
                 });
             } else {
-                html += `<div class="bg-green-50 text-green-800 p-4 rounded">🎉 未發現明顯答錯題目或無法辨識錯誤。</div>`;
+                html += `<div class="text-center text-gray-500 mt-4">無法辨識出個別學生資料。</div>`;
             }
             html += '</div>'; container.innerHTML = html; studentExportBtn.classList.remove('hidden');
         }
 
         function exportStudentToWord() {
             if (!currentStudentData) return;
-            let wordHtml = buildWordHtmlHeader("花蓮縣信義國小 - 學生個別答題診斷報告", currentStudentData._isTruncated);
-            if (currentStudentData.overallPerformance) {
-                const p = currentStudentData.overallPerformance;
-                wordHtml += `<table><tr><td colspan="2" class="overall-header" style="background:#ccfbf1">學生整體表現評估</td></tr>
-                <tr><td class="overall-label">學習強項</td><td>${formatContent(p.strengths)}</td></tr>
-                <tr><td class="overall-label" style="color:red">主要弱項</td><td>${formatContent(p.weaknesses)}</td></tr>
-                <tr><td class="overall-label">輔導建議</td><td style="color:#0f766e">${formatContent(p.generalAdvice)}</td></tr></table><br>`;
+            let wordHtml = buildWordHtmlHeader("花蓮縣信義國小 - 班級學生答題診斷報告", currentStudentData._isTruncated);
+            
+            // 全班整體表現
+            if (currentStudentData.classOverallPerformance) {
+                const p = currentStudentData.classOverallPerformance;
+                wordHtml += `<table><tr><td colspan="2" class="overall-header" style="background:#ccfbf1">全班整體表現評估</td></tr>
+                <tr><td class="overall-label">全班共同強項</td><td>${formatContent(p.strengths)}</td></tr>
+                <tr><td class="overall-label" style="color:red">全班主要弱項</td><td>${formatContent(p.weaknesses)}</td></tr>
+                <tr><td class="overall-label">整體教學建議</td><td style="color:#0f766e">${formatContent(p.generalAdvice)}</td></tr></table><br>`;
             }
-            (currentStudentData.errorItems || []).forEach(item => {
-                wordHtml += `<table><tr><th colspan="2" style="background:#fee2e2; color:#b91c1c; font-size: 14pt;">錯誤題號：${escapeHtml(item.questionNumber)}</th></tr>
-                <tr><td width="20%"><strong>作答狀況</strong></td><td style="background:#f8fafc">${formatContent(item.studentAnswerStatus)}</td></tr>
-                <tr><td><strong>迷思概念推論</strong></td><td style="color:red">${formatContent(item.misconception)}</td></tr>
-                <tr><td><strong>補救教學策略</strong></td><td style="color:green">${formatContent(item.remedialStrategy)}</td></tr></table><br>`;
-            });
-            downloadBlob(wordHtml, '花蓮縣信義國小_學生答題診斷報告.doc');
+
+            // 逐一學生匯出
+            if (currentStudentData.students && currentStudentData.students.length > 0) {
+                currentStudentData.students.forEach(student => {
+                    wordHtml += `<h2 style="color: #4338ca; border-bottom: 2px solid #4338ca; padding-bottom: 5px;">學生：${escapeHtml(student.studentIdentifier)}</h2>`;
+                    
+                    if (student.individualDiagnosis) {
+                        const id = student.individualDiagnosis;
+                        wordHtml += `<table><tr><td colspan="2" class="overall-header" style="background:#e0e7ff; font-size:12pt;">個別深度診斷</td></tr>
+                        <tr><td class="overall-label">認知迷思樣態</td><td>${formatContent(id.cognitivePattern)}</td></tr>
+                        <tr><td class="overall-label">學習狀態特徵</td><td>${formatContent(id.learningStatus)}</td></tr>
+                        <tr><td class="overall-label" style="color:#3730a3">專屬行動方案</td><td style="color:#312e81">${formatContent(id.customizedActionPlan)}</td></tr></table>`;
+                    }
+
+                    if (student.errorItems && student.errorItems.length > 0) {
+                        student.errorItems.forEach(item => {
+                            wordHtml += `<table><tr><th colspan="2" style="background:#fee2e2; color:#b91c1c; text-align:left;">錯誤題號：${escapeHtml(item.questionNumber)}</th></tr>
+                            <tr><td width="20%"><strong>作答狀況</strong></td><td style="background:#f8fafc">${formatContent(item.studentAnswerStatus)}</td></tr>
+                            <tr><td><strong>迷思概念推論</strong></td><td style="color:red">${formatContent(item.misconception)}</td></tr>
+                            <tr><td><strong>補救教學策略</strong></td><td style="color:green">${formatContent(item.remedialStrategy)}</td></tr></table>`;
+                        });
+                    } else {
+                        wordHtml += `<p style="color: green;">此學生無錯誤題目紀錄。</p>`;
+                    }
+                    wordHtml += `<br><br>`;
+                });
+            }
+
+            downloadBlob(wordHtml, '花蓮縣信義國小_班級學生答題診斷報告.doc');
         }
 
         // ================= 共用輔助函式 =================
-        function parseAndRepairJSON(jsonText, arrayKey) {
+        function parseAndRepairJSON(jsonText) {
             let parsedData = null;
             let isTruncated = false;
             try {
                 let cleanText = jsonText.replace(/^`{3}(?:json)?/gim, '').replace(/`{3}$/gim, '').trim().replace(/[\r\n\t]+/g, ' '); 
+                cleanText = cleanText.replace(/,\s*([\]}])/g, '$1'); 
                 parsedData = JSON.parse(cleanText);
             } catch (error) {
                 isTruncated = true;
                 try {
                     let fixText = jsonText.replace(/^`{3}(?:json)?/gim, '').replace(/`{3}$/gim, '').trim().replace(/[\r\n\t]+/g, ' ');
+                    fixText = fixText.replace(/,\s*([\]}])/g, '$1'); 
                     let lastValidIndex = fixText.lastIndexOf('}');
                     let recovered = false;
                     while (lastValidIndex > 0) {
@@ -543,7 +624,7 @@
                         } catch (e) { lastValidIndex = fixText.lastIndexOf('}', lastValidIndex - 1); }
                     }
                     if (!recovered) throw new Error("截斷過於嚴重");
-                } catch (e) { throw new Error("資料嚴重截斷，請拆分上傳"); }
+                } catch (e) { throw new Error("資料嚴重截斷或結構異常，請檢查圖檔或拆分上傳"); }
             }
             parsedData._isTruncated = isTruncated;
             return parsedData;
