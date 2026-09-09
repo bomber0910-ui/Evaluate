@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣信義國小試卷與學生答題診斷系統</title>
+    <title>花蓮縣林榮國小試卷與學生答題診斷系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- 引入檔案解析所需套件 (僅保留處理 Word 檔的 mammoth) -->
@@ -33,7 +33,7 @@
 
     <div class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
         <header class="mb-6">
-            <h1 class="text-3xl font-bold text-gray-900">花蓮縣信義國小 評量分析與學生診斷系統</h1>
+            <h1 class="text-3xl font-bold text-gray-900">花蓮縣林榮國小 評量分析與學生診斷系統</h1>
             <p class="text-sm text-gray-600 mt-2">支援上傳 PDF、Word、TXT 或是圖檔。提供「試卷命題分析」與「批次學生答題診斷」雙模式。</p>
         </header>
 
@@ -171,7 +171,7 @@
     </div>
 
     <footer class="py-4 border-t border-gray-200 text-center text-sm text-gray-500 bg-white">
-        &copy; 花蓮縣信義國小 版權所有
+        &copy; 花蓮縣林榮國小 版權所有
     </footer>
 
     <script>
@@ -367,7 +367,7 @@
 
         function exportToWord() {
             if (!currentAnalysisData) return;
-            let wordHtml = buildWordHtmlHeader("花蓮縣信義國小 - 試卷命題分析報告", currentAnalysisData._isTruncated);
+            let wordHtml = buildWordHtmlHeader("花蓮縣林榮國小 - 試卷命題分析報告", currentAnalysisData._isTruncated);
             if (currentAnalysisData.overallReview) {
                 const r = currentAnalysisData.overallReview;
                 wordHtml += `<table><tr><td colspan="2" class="overall-header">總體綜合評論</td></tr>
@@ -383,7 +383,7 @@
                 <tr><td><strong>迷思概念</strong></td><td style="color:red">${escapeHtml(item.misconception)}</td></tr>
                 <tr><td><strong>教學策略</strong></td><td style="color:green">${escapeHtml(item.teachingStrategy)}</td></tr></table><br>`;
             });
-            downloadBlob(wordHtml, '花蓮縣信義國小_試卷命題分析報告.doc');
+            downloadBlob(wordHtml, '花蓮縣林榮國小_試卷命題分析報告.doc');
         }
 
         // ================= 模式二：班級學生個別答題診斷邏輯 =================
@@ -555,7 +555,7 @@
 
         function exportStudentToWord() {
             if (!currentStudentData) return;
-            let wordHtml = buildWordHtmlHeader("花蓮縣信義國小 - 班級學生答題診斷報告", currentStudentData._isTruncated);
+            let wordHtml = buildWordHtmlHeader("花蓮縣林榮國小 - 班級學生答題診斷報告", currentStudentData._isTruncated);
             
             // 全班整體表現
             if (currentStudentData.classOverallPerformance) {
@@ -593,7 +593,7 @@
                 });
             }
 
-            downloadBlob(wordHtml, '花蓮縣信義國小_班級學生答題診斷報告.doc');
+            downloadBlob(wordHtml, '花蓮縣林榮國小_班級學生答題診斷報告.doc');
         }
 
         // ================= 共用輔助函式 =================
